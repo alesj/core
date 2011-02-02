@@ -21,7 +21,7 @@ public class GoodByeMessage
 
    public String method()
    {
-      return "byte";
+      return "bye";
    }
 
 }

@@ -47,8 +47,8 @@ public class InterceptorOrderingTest
       jara.addClass(HelloMessage.class);
 
       BeanArchive jarb = ShrinkWrap.create(BeanArchive.class);
-      jara.intercept(InterceptorB.class, InterceptorA.class);
-      jara.addClass(GoodByeMessage.class);
+      jarb.intercept(InterceptorB.class, InterceptorA.class);
+      jarb.addClass(GoodByeMessage.class);
 
       war.addLibraries(jara, jarb);
       return war;
@@ -67,5 +67,4 @@ public class InterceptorOrderingTest
       Assert.assertEquals("ABhello", hello.method());
       Assert.assertEquals("BAbye", bye.method());
    }
-
 }
