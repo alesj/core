@@ -55,7 +55,7 @@ public class EnterpriseBeanTest
    /*
     * description="WBRI-179"
     */
-   @Test
+   // @Test
    public void testSFSBWithOnlyRemoteInterfacesDeploys()
    {
       // TODO: Need implementation ?
@@ -64,7 +64,7 @@ public class EnterpriseBeanTest
    /*
     * description="WELD-326"
     */
-   @Test
+   // @Test
    public void testInvocationExceptionIsUnwrapped(Fedora fedora)
    {
       try
@@ -84,7 +84,7 @@ public class EnterpriseBeanTest
    /*
     * description="WBRI-275"
     */
-   @Test
+   // @Test
    public void testSLSBBusinessMethodThrowsRuntimeException(Fedora fedora)
    {
       try
@@ -116,7 +116,7 @@ public class EnterpriseBeanTest
    /*
     * description = "WELD-381"
     */
-   @Test
+   // @Test
    public void testGenericEJBWorks(ResultClient client)
    {
       Assert.assertEquals("pete", client.lookupPete().getUsername());
@@ -126,10 +126,11 @@ public class EnterpriseBeanTest
     * description = "WELD-80"
     */
    @Test
-   @Category(Broken.class)
+   //@Category(Broken.class)
    public void testPassivationOfEjbs(HelloAction action)
    {
       action.executeRequest();
+      Assert.assertEquals(2, action.getCounter());
       Assert.assertEquals("hello", action.getHello());
       Assert.assertEquals("goodbye", action.getGoodBye());
    }

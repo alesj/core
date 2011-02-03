@@ -26,6 +26,7 @@ public class HelloAction
    @Inject
    private IHelloBean helloBean;
 
+   private int counter;
    private String hello;
    private String goodBye;
 
@@ -41,6 +42,12 @@ public class HelloAction
          System.out.println("Caught Interruption.");
       }
       goodBye = helloBean.sayGoodbye();
+      counter = helloBean.counter();
+   }
+
+   public int getCounter()
+   {
+      return counter;
    }
 
    public String getHello()

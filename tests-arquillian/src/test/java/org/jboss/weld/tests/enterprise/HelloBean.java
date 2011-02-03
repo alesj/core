@@ -17,10 +17,13 @@
 package org.jboss.weld.tests.enterprise;
 
 import javax.annotation.Resource;
+import javax.ejb.PostActivate;
+import javax.ejb.PrePassivate;
 import javax.ejb.Remove;
 import javax.ejb.Stateful;
 import javax.enterprise.context.SessionScoped;
 import javax.enterprise.inject.spi.BeanManager;
+import javax.inject.Inject;
 
 import org.jboss.ejb3.annotation.CacheConfig;
 
@@ -31,6 +34,28 @@ public class HelloBean implements IHelloBean
 {
    @Resource(mappedName = "java:comp/BeanManager")
    private BeanManager beanManager;
+
+   @Inject
+   private Counter counter;
+
+   @PrePassivate
+   public void prePassivate()
+   {
+      counter.increment();
+      System.err.println("prePassivate!");
+   }
+
+   @PostActivate
+   public void postActivate()
+   {
+      System.err.println("postActivate!");
+      counter.increment();
+   }
+
+   public int counter()
+   {
+      return counter.getCounter();
+   }
 
    public String sayHello()
    {

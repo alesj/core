@@ -16,17 +16,29 @@
  */
 package org.jboss.weld.tests.enterprise;
 
-import javax.ejb.Local;
+import javax.enterprise.context.SessionScoped;
 
-@Local
-public interface IHelloBean
+import java.io.Serializable;
+
+@SessionScoped
+public class Counter implements Serializable
 {
-   public abstract int counter();
+   private static final long serialVersionUID = 1L;
 
-   public abstract String sayHello();
+   private int counter;
 
-   public abstract String sayGoodbye();
+   public void increment()
+   {
+      counter++;
+   }
 
-   public abstract void remove();
+   public void decrement()
+   {
+      counter--;
+   }
 
+   public int getCounter()
+   {
+      return counter;
+   }
 }
