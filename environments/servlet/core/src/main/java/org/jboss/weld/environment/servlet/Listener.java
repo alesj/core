@@ -26,6 +26,8 @@ import javax.servlet.ServletContextEvent;
 import javax.servlet.jsp.JspApplicationContext;
 import javax.servlet.jsp.JspFactory;
 
+import java.lang.reflect.Method;
+
 import org.jboss.weld.bootstrap.api.Bootstrap;
 import org.jboss.weld.bootstrap.api.Environments;
 import org.jboss.weld.environment.jetty.JettyWeldInjector;
@@ -55,6 +57,7 @@ public class Listener extends ForwardingServletListener
    private static final String WELD_LISTENER_CLASS_NAME = "org.jboss.weld.servlet.WeldListener";
    private static final String EXPRESSION_FACTORY_NAME = "org.jboss.weld.el.ExpressionFactory";
    private static final String JETTY_REQUIRED_CLASS_NAME = "org.mortbay.jetty.servlet.ServletHandler";
+   private static final String JETTY7_REQUIRED_CLASS_NAME = "org.eclipse.jetty.servlet.ServletHandler";
    public  static final String INJECTOR_ATTRIBUTE_NAME = "org.jboss.weld.environment.jetty.JettyWeldInjector";
    public static final String BEAN_MANAGER_ATTRIBUTE_NAME = Listener.class.getPackage().getName() + "." + BeanManager.class.getName();
 
@@ -232,6 +235,30 @@ public class Listener extends ForwardingServletListener
             log.error("Unable to create JettyWeldInjector. CDI injection will not be available in Servlets, Filters or Listeners", e);
          }
       }
+
+      String si = context.getServerInfo(); // TODO -- better Jetty7/8 test
+      boolean jetty7 = si.contains("jetty/7") || si.contains("Jetty/7") || si.contains("jetty/8") || si.contains("Jetty/8");
+      if (jetty7)
+      {
+         // Try pushing a Jetty Injector into the servlet context
+         try
+         {
+            Class<?> clazz = Reflections.classForName(JettyWeldInjector.class.getName());
+            Object injector = clazz.getConstructor(WeldManager.class).newInstance(manager);
+            context.setAttribute(INJECTOR_ATTRIBUTE_NAME, injector);
+
+            Class<?> decoratorClass = Reflections.classForName("org.jboss.weld.environment.jetty.WeldDecorator");
+            Method processMethod = decoratorClass.getMethod("process", ServletContext.class);
+            processMethod.invoke(null, context);
+
+            log.info("Jetty7 detected, JSR-299 injection will be available in Servlets and Filters. Injection into Listeners is not supported.");
+         }
+         catch (Exception e)
+         {
+            log.error("Unable to create JettyWeldInjector. CDI injection will not be available in Servlets, Filters or Listeners", e);
+         }
+      }
+
       if (tomcat7)
       {
          try

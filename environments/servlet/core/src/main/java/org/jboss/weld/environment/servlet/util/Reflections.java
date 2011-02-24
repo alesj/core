@@ -58,7 +58,8 @@ public abstract class Reflections
       {
          if (Thread.currentThread().getContextClassLoader() != null)
          {
-            Class<?> c = Thread.currentThread().getContextClassLoader().loadClass(name);
+            ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+            Class<?> c = classLoader.loadClass(name);
             
             @SuppressWarnings("unchecked")
             Class<T> clazz = (Class<T>)  c;
