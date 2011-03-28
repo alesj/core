@@ -35,8 +35,11 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.security.ProtectionDomain;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import javax.enterprise.inject.spi.Bean;
 
 import javassist.NotFoundException;
 import javassist.bytecode.AccessFlag;
@@ -49,9 +52,6 @@ import javassist.bytecode.MethodInfo;
 import javassist.bytecode.Opcode;
 import javassist.util.proxy.MethodHandler;
 import javassist.util.proxy.ProxyObject;
-
-import javax.enterprise.inject.spi.Bean;
-
 import org.jboss.interceptor.proxy.LifecycleMixin;
 import org.jboss.interceptor.util.proxy.TargetInstanceProxy;
 import org.jboss.weld.Container;
@@ -68,6 +68,7 @@ import org.jboss.weld.util.bytecode.DescriptorUtils;
 import org.jboss.weld.util.bytecode.JumpMarker;
 import org.jboss.weld.util.bytecode.JumpUtils;
 import org.jboss.weld.util.bytecode.MethodInformation;
+import org.jboss.weld.util.bytecode.MethodNameParamsKey;
 import org.jboss.weld.util.bytecode.MethodUtils;
 import org.jboss.weld.util.bytecode.RuntimeMethodInformation;
 import org.jboss.weld.util.bytecode.StaticMethodInformation;
@@ -183,7 +184,7 @@ public class ProxyFactory<T>
          }
       }
       String beanId = Container.instance().services().get(ContextualStore.class).putIfAbsent(bean);
-      String className = beanId.replace('.', '$').replace(' ', '_').replace('/', '$').replace(';', '$');
+      String className = beanId.replace('.', '$').replace(' ', '_').replace('/', '$').replace(';', '$').replace(':','$').replace('[', '$').replace(']', '$');
       return proxyPackage + '.' + className;
    }
 
@@ -604,6 +605,16 @@ public class ProxyFactory<T>
       return b;
    }
 
+   protected static void bestMatch(MethodInformation current, Map<MethodNameParamsKey, MethodInformation> cached)
+   {
+      MethodNameParamsKey mnpk = new MethodNameParamsKey(current);
+      MethodInformation previous = cached.get(mnpk);
+      if (previous == null || previous.getMethod().getReturnType().isAssignableFrom(current.getMethod().getReturnType()))
+      {
+         cached.put(mnpk, current);
+      }
+   }
+
    protected void addMethodsFromClass(ClassFile proxyClassType)
    {
       try
@@ -624,21 +635,27 @@ public class ProxyFactory<T>
 
          while (cls != null)
          {
+            Map<MethodNameParamsKey, MethodInformation> checkMap = new HashMap<MethodNameParamsKey, MethodInformation>();
             for (Method method : cls.getDeclaredMethods())
             {
                if (!Modifier.isStatic(method.getModifiers()) && !Modifier.isFinal(method.getModifiers()) && (method.getDeclaringClass() != Object.class || method.getName().equals("toString")))
                {
-                  try
-                  {
-                     MethodInformation methodInfo = new RuntimeMethodInformation(method);
-                     proxyClassType.addMethod(MethodUtils.makeMethod(AccessFlag.PUBLIC, methodInfo, method.getExceptionTypes(), addConstructedGuardToMethodBody(proxyClassType, createForwardingMethodBody(proxyClassType, methodInfo), methodInfo), proxyClassType.getConstPool()));
-                     log.trace("Adding method " + method);
-                  }
-                  catch (DuplicateMemberException e)
-                  {
-                     // do nothing. This will happen if superclass methods
-                     // have been overridden
-                  }
+                  MethodInformation methodInfo = new RuntimeMethodInformation(method);
+                  bestMatch(methodInfo, checkMap);
+               }
+            }
+            for (MethodInformation methodInfo : checkMap.values())
+            {
+               try
+               {
+                  Method method = methodInfo.getMethod();
+                  proxyClassType.addMethod(MethodUtils.makeMethod(AccessFlag.PUBLIC, methodInfo, method.getExceptionTypes(), addConstructedGuardToMethodBody(proxyClassType, createForwardingMethodBody(proxyClassType, methodInfo), methodInfo), proxyClassType.getConstPool()));
+                  log.trace("Adding method " + method);
+               }
+               catch (DuplicateMemberException e)
+               {
+                  // do nothing. This will happen if superclass methods
+                  // have been overridden
                }
             }
             cls = cls.getSuperclass();
@@ -653,7 +670,7 @@ public class ProxyFactory<T>
                   proxyClassType.addMethod(MethodUtils.makeMethod(AccessFlag.PUBLIC, methodInfo, method.getExceptionTypes(), createSpecialMethodBody(proxyClassType, methodInfo), proxyClassType.getConstPool()));
                   log.trace("Adding method " + method);
                }
-               catch (DuplicateMemberException e)
+               catch (DuplicateMemberException ignored)
                {
                }
             }

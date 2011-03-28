@@ -20,7 +20,10 @@ package org.jboss.weld.bean.proxy;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
+import javax.enterprise.inject.spi.Bean;
 
 import javassist.NotFoundException;
 import javassist.bytecode.AccessFlag;
@@ -30,9 +33,6 @@ import javassist.bytecode.DuplicateMemberException;
 import javassist.bytecode.Opcode;
 import javassist.util.proxy.MethodHandler;
 import javassist.util.proxy.ProxyObject;
-
-import javax.enterprise.inject.spi.Bean;
-
 import org.jboss.interceptor.proxy.LifecycleMixin;
 import org.jboss.interceptor.util.proxy.TargetInstanceProxy;
 import org.jboss.weld.exceptions.WeldException;
@@ -44,6 +44,7 @@ import org.jboss.weld.util.bytecode.DescriptorUtils;
 import org.jboss.weld.util.bytecode.JumpMarker;
 import org.jboss.weld.util.bytecode.JumpUtils;
 import org.jboss.weld.util.bytecode.MethodInformation;
+import org.jboss.weld.util.bytecode.MethodNameParamsKey;
 import org.jboss.weld.util.bytecode.MethodUtils;
 import org.jboss.weld.util.bytecode.RuntimeMethodInformation;
 import org.jboss.weld.util.bytecode.StaticMethodInformation;
@@ -113,23 +114,29 @@ public class InterceptedSubclassFactory<T> extends ProxyFactory<T>
          Class<?> cls = getBeanType();
          while (cls != null)
          {
+            Map<MethodNameParamsKey, MethodInformation> checkMap = new HashMap<MethodNameParamsKey, MethodInformation>();
             for (Method method : cls.getDeclaredMethods())
             {
                if (!Modifier.isFinal(method.getModifiers()) && enhancedMethodSignatures.contains(new MethodSignatureImpl(method)))
                {
-                  try
-                  {
-                     MethodInformation methodInfo = new RuntimeMethodInformation(method);
-                     MethodInformation delegatingMethodInfo = new StaticMethodInformation(method.getName() + SUPER_DELEGATE_SUFFIX, methodInfo.getParameterTypes(), methodInfo.getReturnType(), proxyClassType.getName());
-                     proxyClassType.addMethod(MethodUtils.makeMethod(AccessFlag.PUBLIC, delegatingMethodInfo, method.getExceptionTypes(), createDelegateToSuper(proxyClassType, methodInfo), proxyClassType.getConstPool()));
-                     proxyClassType.addMethod(MethodUtils.makeMethod(AccessFlag.PUBLIC, methodInfo, method.getExceptionTypes(), addConstructedGuardToMethodBody(proxyClassType, createForwardingMethodBody(proxyClassType, methodInfo), methodInfo), proxyClassType.getConstPool()));
-                     log.trace("Adding method " + method);
-                  }
-                  catch (DuplicateMemberException e)
-                  {
-                     // do nothing. This will happen if superclass methods have
-                     // been overridden
-                  }
+                  MethodInformation methodInfo = new RuntimeMethodInformation(method);
+                  bestMatch(methodInfo, checkMap);
+               }
+            }
+            for (MethodInformation methodInfo : checkMap.values())
+            {
+               try
+               {
+                  Method method = methodInfo.getMethod();
+                  MethodInformation delegatingMethodInfo = new StaticMethodInformation(method.getName() + SUPER_DELEGATE_SUFFIX, methodInfo.getParameterTypes(), methodInfo.getReturnType(), proxyClassType.getName());
+                  proxyClassType.addMethod(MethodUtils.makeMethod(AccessFlag.PUBLIC, delegatingMethodInfo, method.getExceptionTypes(), createDelegateToSuper(proxyClassType, methodInfo), proxyClassType.getConstPool()));
+                  proxyClassType.addMethod(MethodUtils.makeMethod(AccessFlag.PUBLIC, methodInfo, method.getExceptionTypes(), addConstructedGuardToMethodBody(proxyClassType, createForwardingMethodBody(proxyClassType, methodInfo), methodInfo), proxyClassType.getConstPool()));
+                  log.trace("Adding method " + method);
+               }
+               catch (DuplicateMemberException e)
+               {
+                  // do nothing. This will happen if superclass methods
+                  // have been overridden
                }
             }
             cls = cls.getSuperclass();
@@ -144,7 +151,7 @@ public class InterceptedSubclassFactory<T> extends ProxyFactory<T>
                   proxyClassType.addMethod(MethodUtils.makeMethod(AccessFlag.PUBLIC, methodInformation, method.getExceptionTypes(), createSpecialMethodBody(proxyClassType, methodInformation), proxyClassType.getConstPool()));
                   log.trace("Adding method " + method);
                }
-               catch (DuplicateMemberException e)
+               catch (DuplicateMemberException ignored)
                {
                }
             }
@@ -171,9 +178,10 @@ public class InterceptedSubclassFactory<T> extends ProxyFactory<T>
     *
     *
     * @param file the class file
-    * @param method any JLR method
-    * @param delegateToSuper
+    * @param methodInfo any JLR method
+    * @param delegateToSuper delegate to super
     * @return the method byte code
+    * @throws NotFoundException for any not found error
     */
    protected Bytecode createInterceptorBody(ClassFile file, MethodInformation methodInfo, boolean delegateToSuper) throws NotFoundException
    {
