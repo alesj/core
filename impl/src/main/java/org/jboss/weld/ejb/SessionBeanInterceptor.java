@@ -40,13 +40,15 @@ public class SessionBeanInterceptor implements Serializable
 
    public Object aroundInvoke(InvocationContext invocation) throws Exception
    {
-      
+      System.err.println(">>>>>>>>>>>>>> PRE");
       if (isRequestContextActive())
       {
+         System.err.println(">>>>>>>>>>>>>> active");
          return invocation.proceed();
       }
       else
       {
+         System.err.println(">>>>>>>>>>>>>> start");
          EjbRequestContext requestContext = Container.instance().deploymentManager().instance().select(EjbRequestContext.class).get();
          try
          {
@@ -54,6 +56,7 @@ public class SessionBeanInterceptor implements Serializable
             requestContext.activate();
             try
             {
+               System.err.println(">>>>>>>>>>>>>> set");
                return invocation.proceed();
             }
             finally

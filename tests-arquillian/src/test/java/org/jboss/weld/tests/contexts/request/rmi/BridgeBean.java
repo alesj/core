@@ -7,8 +7,9 @@ import javax.inject.Inject;
 public class BridgeBean implements Bridge {
     @Inject @My private Config config;
 
+    @BridgeAnnotation
     public String doSomething() {
-        System.out.println("Bridge.doSomething.");
+        System.err.println(">>>>>>>>>>> Bridge.doSomething.");
         return config.toString();
     }
 }
