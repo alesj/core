@@ -247,7 +247,7 @@ public abstract class AbstractClassBean<T> extends AbstractBean<T, Class<T>> {
     protected T getOuterDelegate(T instance, CreationalContext<T> creationalContext, InjectionPoint originalInjectionPoint) {
         assert hasDecorators() : "Bean does not have decorators";
         TargetBeanInstance beanInstance = new TargetBeanInstance(this, instance);
-        DecorationHelper<T> decorationHelper = new DecorationHelper<T>(beanInstance, this, decoratorProxyFactory.getProxyClass(), beanManager, getContextualStore(), decorators);
+        DecorationHelper<T> decorationHelper = new DecorationHelper<T>(beanManager.getContextId(), beanInstance, this, decoratorProxyFactory.getProxyClass(), beanManager, getContextualStore(), decorators);
         DecorationHelper.push(decorationHelper);
         try {
             final T outerDelegate = decorationHelper.getNextDelegate(originalInjectionPoint, creationalContext);
