@@ -234,6 +234,7 @@ public class BeanManagerImpl implements WeldManager, Serializable {
 
     private final AtomicInteger childIds;
     private final String id;
+    private final String contextId;
 
     /**
      * Interception model
@@ -247,7 +248,7 @@ public class BeanManagerImpl implements WeldManager, Serializable {
      * @param serviceRegistry
      * @return
      */
-    public static BeanManagerImpl newRootManager(String id, ServiceRegistry serviceRegistry, Enabled enabled) {
+    public static BeanManagerImpl newRootManager(String contextId, String id, ServiceRegistry serviceRegistry, Enabled enabled) {
         Map<Class<? extends Annotation>, List<Context>> contexts = new ConcurrentHashMap<Class<? extends Annotation>, List<Context>>();
 
         return new BeanManagerImpl(
@@ -259,11 +260,11 @@ public class BeanManagerImpl implements WeldManager, Serializable {
                 new CopyOnWriteArrayList<ObserverMethod<?>>(),
                 new CopyOnWriteArrayList<String>(),
                 new ConcurrentHashMap<EjbDescriptor<?>, SessionBean<?>>(),
-                new ClientProxyProvider(),
+                new ClientProxyProvider(contextId),
                 contexts,
                 new CopyOnWriteArraySet<CurrentActivity>(),
                 enabled,
-                id,
+                id, contextId,
                 new AtomicInteger());
     }
 
@@ -281,7 +282,7 @@ public class BeanManagerImpl implements WeldManager, Serializable {
                 rootManager.getContexts(),
                 new CopyOnWriteArraySet<CurrentActivity>(),
                 enabled,
-                id,
+                id, rootManager.contextId,
                 new AtomicInteger());
     }
 
@@ -316,6 +317,7 @@ public class BeanManagerImpl implements WeldManager, Serializable {
                 parentManager.getCurrentActivities(),
                 parentManager.getEnabled(),
                 new StringBuilder().append(parentManager.getChildIds().incrementAndGet()).toString(),
+                parentManager.contextId,
                 parentManager.getChildIds());
     }
 
@@ -332,7 +334,7 @@ public class BeanManagerImpl implements WeldManager, Serializable {
             Map<Class<? extends Annotation>, List<Context>> contexts,
             Set<CurrentActivity> currentActivities,
             Enabled enabled,
-            String id,
+            String id, String contextId,
             AtomicInteger childIds) {
         this.services = serviceRegistry;
         this.beans = beans;
@@ -347,6 +349,7 @@ public class BeanManagerImpl implements WeldManager, Serializable {
         this.enabled = enabled;
         this.namespaces = namespaces;
         this.id = id;
+        this.contextId = contextId;
         this.childIds = new AtomicInteger();
 
         // Set up the structure to store accessible managers in
@@ -361,6 +364,10 @@ public class BeanManagerImpl implements WeldManager, Serializable {
         this.nameBasedResolver = new NameBasedResolver(this, createDynamicAccessibleIterable(beanTransform));
         this.weldELResolver = new WeldELResolver(this);
         this.childActivities = new CopyOnWriteArraySet<BeanManagerImpl>();
+    }
+
+    public String getContextId() {
+        return contextId;
     }
 
 
@@ -396,7 +403,7 @@ public class BeanManagerImpl implements WeldManager, Serializable {
             enterpriseBeans.put(enterpriseBean.getEjbDescriptor(), enterpriseBean);
         }
         if (bean instanceof PassivationCapable) {
-            Container.instance().services().get(ContextualStore.class).putIfAbsent(bean);
+            Container.instance(contextId).services().get(ContextualStore.class).putIfAbsent(bean);
         }
         registerBeanNamespace(bean);
         for (BeanManagerImpl childActivity : childActivities) {
@@ -476,7 +483,7 @@ public class BeanManagerImpl implements WeldManager, Serializable {
         boolean registerInjectionPoint = !injectionPoint.getType().equals(InjectionPoint.class);
         CurrentInjectionPoint currentInjectionPoint = null;
         if (registerInjectionPoint) {
-            currentInjectionPoint = services.get(CurrentInjectionPoint.class);
+            currentInjectionPoint = Container.instance(contextId).services().get(CurrentInjectionPoint.class);
             currentInjectionPoint.push(injectionPoint);
         }
         try {
@@ -681,6 +688,7 @@ public class BeanManagerImpl implements WeldManager, Serializable {
         boolean registerInjectionPoint = injectionPoint != null && !injectionPoint.getType().equals(InjectionPoint.class);
         boolean delegateInjectionPoint = injectionPoint != null && injectionPoint.isDelegate();
 
+        final ServiceRegistry services = Container.instance(contextId).services();
         CurrentInjectionPoint currentInjectionPoint = null;
         if (registerInjectionPoint) {
             currentInjectionPoint = services.get(CurrentInjectionPoint.class);
@@ -858,7 +866,7 @@ public class BeanManagerImpl implements WeldManager, Serializable {
     public BeanManagerImpl createActivity() {
         BeanManagerImpl childActivity = newChildActivityManager(this);
         childActivities.add(childActivity);
-        Container.instance().addActivity(childActivity);
+        Container.instance(contextId).addActivity(childActivity);
         return childActivity;
     }
 
@@ -901,7 +909,7 @@ public class BeanManagerImpl implements WeldManager, Serializable {
     // Serialization
 
     protected Object readResolve() {
-        return Container.instance().activityManager(id);
+        return Container.instance(contextId).activityManager(id);
     }
 
     public ClientProxyProvider getClientProxyProvider() {

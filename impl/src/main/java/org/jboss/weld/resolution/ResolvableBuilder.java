@@ -33,6 +33,7 @@ import javax.enterprise.inject.spi.InjectionPoint;
 import javax.inject.Named;
 import javax.inject.Provider;
 
+import org.jboss.weld.Container;
 import org.jboss.weld.exceptions.IllegalArgumentException;
 import org.jboss.weld.literal.AnyLiteral;
 import org.jboss.weld.literal.DefaultLiteral;
@@ -54,7 +55,7 @@ public class ResolvableBuilder {
     protected final Set<QualifierInstance> qualifierInstances;
     protected final Map<Class<? extends Annotation>, Annotation> mappedQualifiers;
     protected Bean<?> declaringBean;
-    private final BeanManagerImpl beanManager;
+    protected final BeanManagerImpl beanManager;
 
     public ResolvableBuilder(final BeanManagerImpl beanManager) {
         this.beanManager = beanManager;
@@ -64,8 +65,8 @@ public class ResolvableBuilder {
         this.qualifierInstances = new HashSet<QualifierInstance>();
     }
 
-    public ResolvableBuilder(Type type, final BeanManagerImpl beanManager) {
-        this(beanManager);
+    public ResolvableBuilder(Type type, final BeanManagerImpl manager) {
+        this(manager);
         if (type != null) {
             this.rawType = Reflections.getRawType(type);
             if (rawType == null) {
@@ -186,8 +187,8 @@ public class ResolvableBuilder {
         return this;
     }
 
-    protected void checkQualifier(Annotation qualifier, final QualifierInstance qualifierInstance, Class<? extends Annotation> annotationType) {
-        if (!beanManager.getServices().get(MetaAnnotationStore.class).getBindingTypeModel(annotationType).isValid()) {
+    protected void checkQualifier(Annotation qualifier, QualifierInstance qualifierInstance, Class<? extends Annotation> annotationType) {
+        if (!Container.instance(beanManager.getContextId()).services().get(MetaAnnotationStore.class).getBindingTypeModel(annotationType).isValid()) {
             throw new IllegalArgumentException(INVALID_QUALIFIER, qualifier);
         }
         if (qualifierInstances.contains(qualifierInstance)) {
