@@ -3,7 +3,7 @@
     <groupId>org.jboss.weld</groupId>
     <artifactId>weld-core-parent</artifactId>
     <packaging>pom</packaging>
-    <version>1.1.6-SNAPSHOT</version>
+    <version>1.2.0-SNAPSHOT</version>
 
     <name>Weld Parent</name>
 
@@ -68,7 +68,7 @@
         <selenium.maven.plugin.version>1.0.1</selenium.maven.plugin.version>
         <slf4j.version>1.6.1</slf4j.version>
         <testng.version>5.10</testng.version>
-        <weld.api.version>1.2-SNAPSHOT</weld.api.version>
+        <weld.api.version>1.2.0-SNAPSHOT</weld.api.version>
     </properties>
 
     <modules>
