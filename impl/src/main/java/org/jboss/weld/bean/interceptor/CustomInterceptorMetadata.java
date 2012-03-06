@@ -1,10 +1,5 @@
 package org.jboss.weld.bean.interceptor;
 
-import java.util.Collections;
-import java.util.List;
-
-import javax.enterprise.inject.spi.Interceptor;
-
 import org.jboss.weld.interceptor.proxy.CustomInterceptorInvocation;
 import org.jboss.weld.interceptor.proxy.InterceptorInvocation;
 import org.jboss.weld.interceptor.spi.metadata.ClassMetadata;
@@ -14,11 +9,14 @@ import org.jboss.weld.interceptor.spi.metadata.MethodMetadata;
 import org.jboss.weld.interceptor.spi.model.InterceptionType;
 import org.jboss.weld.serialization.spi.helpers.SerializableContextual;
 
+import javax.enterprise.inject.spi.Interceptor;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * @author Marius Bogoevici
  */
 public class CustomInterceptorMetadata implements InterceptorMetadata<SerializableContextual<Interceptor<?>, ?>> {
-
 
     private SerializableContextualInterceptorReference reference;
 
@@ -30,7 +28,7 @@ public class CustomInterceptorMetadata implements InterceptorMetadata<Serializab
     }
 
     public InterceptorReference<SerializableContextual<Interceptor<?>, ?>> getInterceptorReference() {
-       return reference;
+        return reference;
     }
 
     public ClassMetadata<?> getInterceptorClass() {
@@ -38,7 +36,7 @@ public class CustomInterceptorMetadata implements InterceptorMetadata<Serializab
     }
 
     public List<MethodMetadata> getInterceptorMethods(InterceptionType interceptionType) {
-        return Collections.singletonList(null);
+        return Collections.singletonList(null); // TODO?
     }
 
     public boolean isEligible(InterceptionType interceptionType) {
@@ -46,7 +44,7 @@ public class CustomInterceptorMetadata implements InterceptorMetadata<Serializab
     }
 
     public boolean isTargetClass() {
-        return false;  //To change body of implemented methods use File | Settings | File Templates.
+        return false;  // TODO?
     }
 
     public InterceptorInvocation getInterceptorInvocation(Object interceptorInstance, InterceptorMetadata interceptorReference, InterceptionType interceptionType) {

@@ -1,39 +1,28 @@
 package org.jboss.weld.interceptor.proxy;
 
-import java.lang.reflect.Method;
-import java.util.Collection;
-import java.util.Collections;
-
 import javax.enterprise.inject.spi.InterceptionType;
 import javax.enterprise.inject.spi.Interceptor;
 import javax.interceptor.InvocationContext;
+import java.util.Collection;
+import java.util.Collections;
 
 
 /**
  * @author Marius Bogoevici
+ * @author Ales Justin
  */
 public class CustomInterceptorInvocation<T> implements InterceptorInvocation {
 
-    private final Interceptor<?> interceptorBeanInstance;
+    private final Interceptor<T> interceptorBeanInstance;
 
     private final T interceptorInstance;
 
     private final InterceptionType interceptionType;
 
-    public CustomInterceptorInvocation(Interceptor<?> interceptorBeanInstance, T interceptorInstance, InterceptionType interceptionType) {
+    public CustomInterceptorInvocation(Interceptor<T> interceptorBeanInstance, T interceptorInstance, InterceptionType interceptionType) {
         this.interceptorBeanInstance = interceptorBeanInstance;
         this.interceptorInstance = interceptorInstance;
         this.interceptionType = interceptionType;
-    }
-
-    private static final Method intercept;
-
-    static {
-        try {
-            intercept = Interceptor.class.getDeclaredMethod("intercept", javax.enterprise.inject.spi.InterceptionType.class, Object.class, InvocationContext.class );
-        } catch (NoSuchMethodException e) {
-            throw new IllegalStateException(e);
-        }
     }
 
     public Collection<InterceptorMethodInvocation> getInterceptorMethodInvocations() {
@@ -42,7 +31,7 @@ public class CustomInterceptorInvocation<T> implements InterceptorInvocation {
 
     private class CustomInterceptorMethodInvocation implements InterceptorMethodInvocation {
         public Object invoke(InvocationContext invocationContext) throws Exception {
-            return intercept.invoke(interceptorBeanInstance, interceptionType, interceptorInstance, invocationContext);
+            return interceptorBeanInstance.intercept(interceptionType, interceptorInstance, invocationContext);
         }
 
         public boolean expectsInvocationContext() {
