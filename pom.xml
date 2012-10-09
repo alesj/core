@@ -81,7 +81,7 @@
         <pax.exam.version>2.5.0</pax.exam.version>
         <org.apache.felix.version>4.0.3</org.apache.felix.version>
         <!-- Weld API -->
-        <weld.api.version>1.2.0-SNAPSHOT</weld.api.version>
+        <weld.api.version>1.2.0.Beta1</weld.api.version>
     </properties>
 
     <modules>
