@@ -106,8 +106,8 @@ public class WeldOSGiExtension implements Extension {
             WeldOSGiExtension.class);
     private static boolean autoRunInHybridMode = true;
     // hack for weld integration
-    public static ThreadLocal<Long> currentBundle = new ThreadLocal<Long>();
-    public static ThreadLocal<BundleContext> currentContext = new ThreadLocal<BundleContext>();
+    private static ThreadLocal<BundleContext> currentContext = new ThreadLocal<BundleContext>();
+    private static ThreadLocal<Bundle> currentBundle = new ThreadLocal<Bundle>();
     private HashMap<Type, Set<InjectionPoint>> servicesToBeInjected =
             new HashMap<Type, Set<InjectionPoint>>();
     private HashMap<Type, Set<InjectionPoint>> serviceProducerToBeInjected =
@@ -120,6 +120,34 @@ public class WeldOSGiExtension implements Extension {
     private BeanManager beanManager;
     private HybridListener listener;
     private BundleContextDelegate delegate;
+
+    public static BundleContext setCurrentContext(BundleContext current) {
+        BundleContext previous = currentContext.get();
+        if (current == null) {
+            currentContext.remove();
+        } else {
+            currentContext.set(current);
+        }
+        return previous;
+    }
+
+    public static Bundle setCurrentBundle(Bundle current) {
+        Bundle previous = currentBundle.get();
+        if (current == null) {
+            currentBundle.remove();
+        } else {
+            currentBundle.set(current);
+        }
+        return previous;
+    }
+
+    public static Bundle getCurrentBundle() {
+        return currentBundle.get();
+    }
+
+    public static BundleContext getCurrentContext() {
+        return currentContext.get();
+    }
 
     void registerCDIOSGiBeans(@Observes BeforeBeanDiscovery event,
             BeanManager manager) {
@@ -139,7 +167,7 @@ public class WeldOSGiExtension implements Extension {
         this.beanManager = manager;
         if (!Activator.osgiStarted() && WeldOSGiExtension.autoRunInHybridMode) {
             delegate = new BundleContextDelegate();
-            currentContext.set(delegate);
+            setCurrentContext(delegate);
         }
     }
 
@@ -294,15 +322,14 @@ public class WeldOSGiExtension implements Extension {
      * Provided for server integration purposes.
      *
      * @param bc
-     * @param activator
      */
     private HybridListener runInHybridMode(BundleContext bc) {
         HybridListener list = new HybridListener(bc, this);
         delegate.setContext(bc);
         bc.addBundleListener(list);
         bc.addServiceListener(list);
-        currentContext.set(bc);
-        currentBundle.set(bc.getBundle().getBundleId());
+        setCurrentContext(bc);
+        setCurrentBundle(bc.getBundle());
         return list;
     }
 
@@ -315,8 +342,8 @@ public class WeldOSGiExtension implements Extension {
 
     void afterDeployment(@Observes AfterDeploymentValidation event) {
         if (listener != null) {
-            currentContext.remove();
-            currentBundle.remove();
+            setCurrentContext(null);
+            setCurrentBundle(null);
         }
     }
 
@@ -387,7 +414,7 @@ public class WeldOSGiExtension implements Extension {
         for (Iterator<InjectionPoint> iterator = injectionPoints.iterator();
                 iterator.hasNext();) {
             final InjectionPoint injectionPoint = iterator.next();
-            beans.add(new OSGiServiceBean(injectionPoint, currentContext.get()));
+            beans.add(new OSGiServiceBean(injectionPoint, getCurrentContext()));
         }
         for (OSGiServiceBean bean : beans) {
             event.addBean(bean);
@@ -400,7 +427,7 @@ public class WeldOSGiExtension implements Extension {
         for (Iterator<InjectionPoint> iterator = injectionPoints.iterator();
                 iterator.hasNext();) {
             final InjectionPoint injectionPoint = iterator.next();
-            beans.add(new OSGiServiceProducerBean(injectionPoint, currentContext.get()));
+            beans.add(new OSGiServiceProducerBean(injectionPoint, getCurrentContext()));
         }
         for (OSGiServiceProducerBean bean : beans) {
             event.addBean(bean);
@@ -498,8 +525,8 @@ public class WeldOSGiExtension implements Extension {
                     bundleEvent = new BundleEvents.BundleUpdated(bundle);
                     break;
             }
-            boolean set = WeldOSGiExtension.currentBundle.get() != null;
-            WeldOSGiExtension.currentBundle.set(context.getBundle().getBundleId());
+            Bundle previousBundle = WeldOSGiExtension.setCurrentBundle(context.getBundle());
+            BundleContext previousContext = WeldOSGiExtension.setCurrentContext(context);
             try {
                 //broadcast the OSGi event through CDI event system
                 extension.beanManager.fireEvent(event);
@@ -511,9 +538,8 @@ public class WeldOSGiExtension implements Extension {
                 //broadcast the corresponding Weld-OSGi event
                 fireAllBundleEvent(bundleEvent);
             }
-            if (!set) {
-                WeldOSGiExtension.currentBundle.remove();
-            }
+            WeldOSGiExtension.setCurrentBundle(previousBundle);
+            WeldOSGiExtension.setCurrentContext(previousContext);
         }
 
         @Override
@@ -534,8 +560,8 @@ public class WeldOSGiExtension implements Extension {
                     serviceEvent = new ServiceEvents.ServiceDeparture(ref, context);
                     break;
             }
-            boolean set = WeldOSGiExtension.currentBundle.get() != null;
-            WeldOSGiExtension.currentBundle.set(context.getBundle().getBundleId());
+            Bundle previousBundle = WeldOSGiExtension.setCurrentBundle(context.getBundle());
+            BundleContext previousContext = WeldOSGiExtension.setCurrentContext(context);
             try {
                 //broadcast the OSGi event through CDI event system
                 extension.beanManager.fireEvent(event);
@@ -547,9 +573,8 @@ public class WeldOSGiExtension implements Extension {
                 //broadcast the corresponding Weld-OSGi event
                 fireAllServiceEvent(serviceEvent);
             }
-            if (!set) {
-                WeldOSGiExtension.currentBundle.remove();
-            }
+            WeldOSGiExtension.setCurrentBundle(previousBundle);
+            WeldOSGiExtension.setCurrentContext(previousContext);
         }
 
         private void fireAllServiceEvent(AbstractServiceEvent event) {
